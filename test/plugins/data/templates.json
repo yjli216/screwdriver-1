@@ -1,0 +1,19 @@
+[{
+  "id": 7969,
+  "name": "template1",
+  "version": 1.7,
+  "description": "this is a template",
+  "maintainer": "foo@bar.com",
+  "scmUri": "github.com:12345:master",
+  "templateUrl": "https://foo.com"
+},
+{
+  "id": 7970,
+  "name": "template2",
+  "version": 2.7,
+  "description": "this is a template",
+  "maintainer": "foo@bar.com",
+  "scmUri": "github.com:67890:master",
+  "templateUrl": "https://foobar.com"
+}
+]
