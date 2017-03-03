@@ -1,9 +1,14 @@
 {
   "id": 7969,
-  "name": "template",
-  "version": 1.7,
+  "name": "screwdriver/build",
+  "labels": ["stable"],
+  "version": "1.7.3",
   "description": "this is a template",
   "maintainer": "foo@bar.com",
-  "scmUri": "github.com:12345678:master",
-  "templateUrl": "https://foo.com"
+  "scmUri": "github.com:12345:branchName",
+  "config": {
+      "steps": [{
+          "echo": "echo hello"
+      }]
+  }
 }

@@ -28,27 +28,44 @@ module.exports = () => ({
             const token = request.auth.credentials.token;
             const decoded = jwt.decode(token);
             const pipelineId = decoded.pipelineId;
+            const name = request.payload.name;
+            const labels = request.payload.labels || [];
 
-            // If nothing is there -> just create
-            // If soemthing is there (existedTemplate -- same name)->
-            //      check scmUri of this current build is the same as existedTemplate's scmUri
-            //      check version. done in model
-            //          if version already exists, need to check if test, if test then ok
-            //          if version doesn't exist, then its ok.
             return Promise.all([
                 pipelineFactory.get(pipelineId),
-                templateFactory.get({ name: request.payload.name })
+                templateFactory.get({ name })
             ]).then(([pipeline, template]) => {
-                if (template && pipeline.scmUri !== template.scmUri) {
-                    throw boom.unauthorized('Not allowed to publish this platform');
-                }
-                const templateConfig = hoek.applyToDefaults(request.payload,
-                    {
-                        scmUri: pipeline.scmUri,
-                        config: request.payload.config
-                    });
+                const templateConfig = hoek.applyToDefaults(request.payload, {
+                    scmUri: pipeline.scmUri,
+                    labels
+                });
 
-                return templateFactory.create(templateConfig);
+                // If template doesn't exist yet, just create a new entry
+                if (!template) {
+                    return templateFactory.create(templateConfig);
+                }
+
+                // If template exists, but this build's scmUri is not the same as template's scmUri
+                // Then this build does not have permission to publish
+                if (pipeline.scmUri !== template.scmUri) {
+                    throw boom.unauthorized('Not allowed to publish this template');
+                }
+
+                // If template exists and has good permission, check the exact version
+                return templateFactory.get({
+                    name,
+                    version: request.payload.version
+                }).then((exactVersion) => {
+                    // If the version doesn't exist, create a new entry
+                    if (!exactVersion) {
+                        return templateFactory.create(templateConfig);
+                    }
+
+                    // If the version exists, just update the labels
+                    template.labels = [...new Set([...template.labels, ...labels])];
+
+                    return template.update();
+                });
             })
             .then((template) => {
                 const location = urlLib.format({

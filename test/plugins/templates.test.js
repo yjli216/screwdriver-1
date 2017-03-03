@@ -45,9 +45,10 @@ const getPipelineMocks = (pipelines) => {
     return decoratePipelineMock(pipelines);
 };
 
-describe.only('template plugin test', () => {
+describe('template plugin test', () => {
     let templateFactoryMock;
     let pipelineFactoryMock;
+    let jwtMock;
     let plugin;
     let server;
 
@@ -67,6 +68,12 @@ describe.only('template plugin test', () => {
         pipelineFactoryMock = {
             get: sinon.stub()
         };
+
+        jwtMock = {
+            decode: sinon.stub()
+        };
+
+        mockery.registerMock('jsonwebtoken', jwtMock);
 
         /* eslint-disable global-require */
         plugin = require('../../plugins/templates');
@@ -164,7 +171,7 @@ describe.only('template plugin test', () => {
             const error = {
                 statusCode: 404,
                 error: 'Not Found',
-                message: 'template does not exist'
+                message: 'Template does not exist'
             };
 
             templateFactoryMock.get.withArgs(id).resolves(null);
@@ -188,7 +195,7 @@ describe.only('template plugin test', () => {
         let options;
         let templateMock;
         let pipelineMock;
-        const testId = 123;
+        const testId = 7969;
 
         beforeEach(() => {
             options = {
@@ -199,24 +206,40 @@ describe.only('template plugin test', () => {
                     version: '1.7',
                     maintainer: 'foo@bar.com',
                     description: 'test template',
-                    templateUrl: 'http://foo.bar'
+                    config: {
+                        steps: [{
+                            echo: 'echo hello'
+                        }]
+                    }
                 },
                 credentials: {
                     scope: ['build']
                 }
             };
 
+            jwtMock.decode.returns({
+                pipelineId: 123
+            });
+
             templateMock = getTemplateMocks(testtemplate);
-            templateFactoryMock.get.resolves(templateMock);
+            templateFactoryMock.get.resolves(null);
+            templateFactoryMock.create.resolves(templateMock);
 
             pipelineMock = getPipelineMocks(testpipeline);
             pipelineFactoryMock.get.resolves(pipelineMock);
         });
 
-        it('returns 201 when creates successfully', () => {
-            let expectedLocation;
+        it('returns 401 when scmUri does not match', () => {
+            templateMock.scmUri = 'github.com:67890:branchName';
+            templateFactoryMock.get.resolves(templateMock);
 
-            templateFactoryMock.get.resolves(null);
+            return server.inject(options).then((reply) => {
+                assert.equal(reply.statusCode, 401);
+            });
+        });
+
+        it('creates template if template does not exist yet', () => {
+            let expectedLocation;
 
             return server.inject(options).then((reply) => {
                 expectedLocation = {
@@ -232,18 +255,66 @@ describe.only('template plugin test', () => {
                     version: '1.7',
                     maintainer: 'foo@bar.com',
                     description: 'test template',
-                    templateUrl: 'http://foo.bar',
-                    scmUri: 'github.com:12345:branchName'
+                    scmUri: 'github.com:12345:branchName',
+                    labels: [],
+                    config: { steps: [{ echo: 'echo hello' }] }
                 });
                 assert.equal(reply.statusCode, 201);
             });
         });
 
-        it('returns 401 when scmUri does not match', () => {
-            templateMock.scmUri = 'github.com:67890:branchName';
+        it('creates template if has good permission and it is a new version', () => {
+            let expectedLocation;
+
+            templateFactoryMock.get.withArgs({
+                name: 'template'
+            }).resolves(templateMock);
+            templateFactoryMock.get.withArgs({
+                name: 'template',
+                version: '1.8'
+            }).resolves(null);
+
+            options.payload.version = '1.8';
 
             return server.inject(options).then((reply) => {
-                assert.equal(reply.statusCode, 401);
+                expectedLocation = {
+                    host: reply.request.headers.host,
+                    port: reply.request.headers.port,
+                    protocol: reply.request.server.info.protocol,
+                    pathname: `${options.url}/${testId}`
+                };
+                assert.deepEqual(reply.result, testtemplate);
+                assert.strictEqual(reply.headers.location, urlLib.format(expectedLocation));
+                assert.calledWith(templateFactoryMock.create, {
+                    name: 'template',
+                    version: '1.8',
+                    maintainer: 'foo@bar.com',
+                    description: 'test template',
+                    scmUri: 'github.com:12345:branchName',
+                    labels: [],
+                    config: { steps: [{ echo: 'echo hello' }] }
+                });
+                assert.equal(reply.statusCode, 201);
+            });
+        });
+
+        it('update labels has good permission and it is an existingversion', () => {
+            let expectedLocation;
+
+            templateMock.update = sinon.stub().resolves(templateMock);
+            templateFactoryMock.get.resolves(templateMock);
+
+            return server.inject(options).then((reply) => {
+                expectedLocation = {
+                    host: reply.request.headers.host,
+                    port: reply.request.headers.port,
+                    protocol: reply.request.server.info.protocol,
+                    pathname: `${options.url}/${testId}`
+                };
+                assert.deepEqual(reply.result, testtemplate);
+                assert.strictEqual(reply.headers.location, urlLib.format(expectedLocation));
+                assert.calledOnce(templateMock.update);
+                assert.equal(reply.statusCode, 201);
             });
         });
 
