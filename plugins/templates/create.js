@@ -4,7 +4,6 @@ const boom = require('boom');
 const schema = require('screwdriver-data-schema');
 const hoek = require('hoek');
 const urlLib = require('url');
-const jwt = require('jsonwebtoken');
 
 module.exports = () => ({
     method: 'POST',
@@ -25,9 +24,8 @@ module.exports = () => ({
         handler: (request, reply) => {
             const pipelineFactory = request.server.app.pipelineFactory;
             const templateFactory = request.server.app.templateFactory;
-            const token = request.auth.credentials.token;
-            const decoded = jwt.decode(token);
-            const pipelineId = decoded.pipelineId;
+            const token = request.auth.credentials;
+            const pipelineId = token.pipelineId;
             const name = request.payload.name;
             const labels = request.payload.labels || [];
 
@@ -42,12 +40,16 @@ module.exports = () => ({
 
                 // If template doesn't exist yet, just create a new entry
                 if (!template) {
+                    console.log('template does not exist yet');
+
                     return templateFactory.create(templateConfig);
                 }
 
                 // If template exists, but this build's scmUri is not the same as template's scmUri
                 // Then this build does not have permission to publish
                 if (pipeline.scmUri !== template.scmUri) {
+                    console.log('template exists but not enough permisisons');
+
                     throw boom.unauthorized('Not allowed to publish this template');
                 }
 
@@ -58,9 +60,12 @@ module.exports = () => ({
                 }).then((exactVersion) => {
                     // If the version doesn't exist, create a new entry
                     if (!exactVersion) {
+                        console.log('exact version does not exist');
+
                         return templateFactory.create(templateConfig);
                     }
 
+                    console.log('exact version exists, update label');
                     // If the version exists, just update the labels
                     template.labels = [...new Set([...template.labels, ...labels])];
 
