@@ -61,13 +61,11 @@ This endpoint is only accessible in `build` scope.
 Example payload:
 ```json
 {
-  "id": 7,
   "name": "screwdriver/build",
   "labels": ["stable"],
   "version": "1.7.3",
   "description": "this is a template",
   "maintainer": "foo@bar.com",
-  "scmUri": "github.com:12345:branchName",
   "config": {
       "steps": [{
           "echo": "echo hello"
