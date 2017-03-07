@@ -27,50 +27,42 @@ module.exports = () => ({
             const token = request.auth.credentials;
             const pipelineId = token.pipelineId;
             const name = request.payload.name;
+            const version = request.payload.version;
             const labels = request.payload.labels || [];
 
             return Promise.all([
                 pipelineFactory.get(pipelineId),
-                templateFactory.get({ name })
-            ]).then(([pipeline, template]) => {
+                templateFactory.list({ name })
+            ]).then(([pipeline, templates]) => {
                 const templateConfig = hoek.applyToDefaults(request.payload, {
                     scmUri: pipeline.scmUri,
                     labels
                 });
 
                 // If template doesn't exist yet, just create a new entry
-                if (!template) {
-                    console.log('template does not exist yet');
-
+                if (templates.length === 0) {
                     return templateFactory.create(templateConfig);
                 }
 
                 // If template exists, but this build's scmUri is not the same as template's scmUri
                 // Then this build does not have permission to publish
-                if (pipeline.scmUri !== template.scmUri) {
-                    console.log('template exists but not enough permisisons');
-
+                if (pipeline.scmUri !== templates[0].scmUri) {
                     throw boom.unauthorized('Not allowed to publish this template');
                 }
 
                 // If template exists and has good permission, check the exact version
-                return templateFactory.get({
-                    name,
-                    version: request.payload.version
-                }).then((exactVersion) => {
-                    // If the version doesn't exist, create a new entry
-                    if (!exactVersion) {
-                        console.log('exact version does not exist');
+                return templateFactory.get({ name, version })
+                    .then((template) => {
+                        // If the version doesn't exist, create a new entry
+                        if (!template) {
+                            return templateFactory.create(templateConfig);
+                        }
 
-                        return templateFactory.create(templateConfig);
-                    }
+                        // If the version exists, just update the labels
+                        template.labels = [...new Set([...template.labels, ...labels])];
 
-                    console.log('exact version exists, update label');
-                    // If the version exists, just update the labels
-                    template.labels = [...new Set([...template.labels, ...labels])];
-
-                    return template.update();
-                });
+                        return template.update();
+                    });
             })
             .then((template) => {
                 const location = urlLib.format({

@@ -224,6 +224,7 @@ describe('template plugin test', () => {
             templateMock = getTemplateMocks(testtemplate);
             templateFactoryMock.get.resolves(null);
             templateFactoryMock.create.resolves(templateMock);
+            templateFactoryMock.list.resolves([templateMock]);
 
             pipelineMock = getPipelineMocks(testpipeline);
             pipelineFactoryMock.get.resolves(pipelineMock);
@@ -240,6 +241,8 @@ describe('template plugin test', () => {
 
         it('creates template if template does not exist yet', () => {
             let expectedLocation;
+
+            templateFactoryMock.list.resolves([]);
 
             return server.inject(options).then((reply) => {
                 expectedLocation = {
@@ -266,9 +269,7 @@ describe('template plugin test', () => {
         it('creates template if has good permission and it is a new version', () => {
             let expectedLocation;
 
-            templateFactoryMock.get.withArgs({
-                name: 'template'
-            }).resolves(templateMock);
+            templateFactoryMock.list.resolves([templateMock]);
             templateFactoryMock.get.withArgs({
                 name: 'template',
                 version: '1.8'
@@ -298,10 +299,11 @@ describe('template plugin test', () => {
             });
         });
 
-        it('update labels has good permission and it is an existingversion', () => {
+        it('update labels has good permission and it is an existing version', () => {
             let expectedLocation;
 
             templateMock.update = sinon.stub().resolves(templateMock);
+            templateFactoryMock.list.resolves([templateMock]);
             templateFactoryMock.get.resolves(templateMock);
 
             return server.inject(options).then((reply) => {
@@ -321,7 +323,7 @@ describe('template plugin test', () => {
         it('returns 500 when the template model fails to get', () => {
             const testError = new Error('templateModelGetError');
 
-            templateFactoryMock.get.rejects(testError);
+            templateFactoryMock.list.rejects(testError);
 
             return server.inject(options).then((reply) => {
                 assert.equal(reply.statusCode, 500);
