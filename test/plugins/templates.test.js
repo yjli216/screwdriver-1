@@ -357,6 +357,7 @@ describe('template plugin test', () => {
 
             return server.inject(options).then((reply) => {
                 assert.equal(reply.statusCode, 400);
+                assert.match(reply.payload, /version\\\\\\" is required/);
             });
         });
     });
