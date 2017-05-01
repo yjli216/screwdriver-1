@@ -62,8 +62,8 @@
     "good-console": "^6.1.1",
     "good-squeeze": "^5.0.0",
     "hapi": "^16.0.1",
-    "hapi-auth-bearer-token": "^4.3.0",
-    "hapi-auth-cookie": "^6.1.1",
+    "hapi-auth-bearer-token": "^5.0.0",
+    "hapi-auth-cookie": "^7.0.0",
     "hapi-auth-jwt": "^4.0.0",
     "hapi-swagger": "^7.0.0",
     "hoek": "^4.0.1",
@@ -100,13 +100,13 @@
     "cucumber": "^1.0.0",
     "eslint": "^3.2.2",
     "eslint-config-screwdriver": "^2.0.0",
-    "github": "^8.1.1",
+    "github": "^9.2.0",
     "jenkins-mocha": "^4.0.0",
     "mockery": "^2.0.0",
     "mz": "^2.6.0",
     "nock": "^9.0.0",
     "npm-auto-version": "^1.0.0",
-    "sinon": "~1.17.4",
+    "sinon": "~2.1.0",
     "sinon-as-promised": "^4.0.2"
   }
 }
